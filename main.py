@@ -75,18 +75,27 @@ class Game():
         
 class Menu():
     def __init__(self):
-        pass    
+        pass   
+
+class Table():
+    def __init__(self):
+        pass 
     
-class Button():
-    def __init__(self, posx, posy):
-        self.pos = (posx, posy)
-        
+class Player():
+    def __init__(self):
+        pass
+    
+class Hand():
+    def __init__(self):
+        pass
         
 class Card():
     def __init__(self):
         pass   
-        
-   
+    
+class Button():
+    def __init__(self, posx, posy):
+        self.pos = (posx, posy)    
         
 # A static class of utilities that are used all through to code in various applications
 class Utils():
