@@ -15,3 +15,6 @@ write some shitty baddidy
 - Player
     - *Hand
     - Name
+- Table
+    - Positions
+    - Dealer
