@@ -12,10 +12,9 @@ class Game():
     
     def setup_pygame(self):
         pygame.init()
-        Utils.setup_utils()
         self.infoObject = pygame.display.Info()
-        self.window_size = (self.infoObject.current_w // (3/2),
-                            self.infoObject.current_h // (3/2))
+        self.window_size = (self.infoObject.current_w // (12/10),
+                            self.infoObject.current_h // (12/10))
         
         WIDTH = self.window_size[0]
         HEIGHT = self.window_size[1]
@@ -36,6 +35,11 @@ class Game():
         
         self.menu = Menu()
         self.blackjack = Blackjack()
+        self.global_button_size = (Utils.WIDTH/24, Utils.HEIGHT/15)
+        self.global_buttons = [Button("Quit", Utils.WIDTH/48, Utils.HEIGHT/30, self.global_button_size[0], 
+                                      self.global_button_size[1], Utils.CLR_DARK_GREY, Utils.CLR_RED, quit, 'quit'), 
+                               Button("Back", Utils.WIDTH/48 + self.global_button_size[0], Utils.HEIGHT/30, self.global_button_size[0], 
+                                      self.global_button_size[1], Utils.CLR_GREY, Utils.CLR_RED, game.change_state, 'menu')]
     
         self.main_loop()
     
@@ -58,6 +62,8 @@ class Game():
             self.menu.draw()
         elif self.gamestate == 1:
             self.blackjack.draw()
+        for button in self.global_buttons:
+            button.draw()
 
 
     def main_loop(self):
@@ -87,43 +93,66 @@ class Game():
             self.gamestate = 0
         if dest == 'blackjack':
             self.gamestate = 1
+    
+    # def quit(self):
+    #     pygame.quit()
         
         
 class Menu():
     def __init__(self):
-        pass
+        self.menu_button_size = (Utils.WIDTH/6, Utils.HEIGHT/12)
+        self.button_offset = (self.menu_button_size[0]//2)
+        self.button_open_blackjack = Button("Blackjack", Utils.WIDTH/2-self.button_offset, Utils.HEIGHT/(12/4), self.menu_button_size[0], 
+                                            self.menu_button_size[1], Utils.CLR_BLUE, Utils.CLR_RED, game.change_state, 'blackjack')
+        
     
     def draw(self):
-        game.window.blit(Utils.BG_IMAGE_SCALED, (0,0))
-        open_blackjack = Button("BRUH", 300, 300, 50, 50, Utils.CLR_BLUE, Utils.CLR_RED, game.change_state, 'blackjack')
-        open_blackjack.draw()
-        pass
+        game.window.blit(Utils.images["backgrounds"]["menu"], (0,0))
+        self.button_open_blackjack.draw()
+    
     
 class Blackjack():
     def __init__(self):
-        pass
-    
+        self.test_cards = [Card("A-H", "1", 1), Card("K-S", "1", 2)]
+        
     def draw(self):
-        game.window.fill(Utils.CLR_BLUE)
-        open_menu = Button("Back", 50, 50, 100, 50, Utils.CLR_GREY, Utils.CLR_RED, game.change_state, 'menu')
-        open_menu.draw()
+        game.window.blit(Utils.images["backgrounds"]["game"], (0,0))
+        for card in self.test_cards:
+            card.draw()
         
         
 class Table():
     def __init__(self):
-        pass 
-    
-class Player():
-    def __init__(self):
+        self.table_positions = {
+            "1": (Utils.WIDTH/6, Utils.HEIGHT-(Utils.HEIGHT/3)),
+            "2": (Utils.WIDTH/2, Utils.HEIGHT-(Utils.HEIGHT/3)),
+            "3": (Utils.WIDTH/(6/5), Utils.HEIGHT-(Utils.HEIGHT/3))
+        }
+
+class Player(Table):
+    def __init__(self, table_pos):
         pass
     
-class Hand():
+    def hit():
+        pass
+        
+   
+class Card(Table):
+    def __init__(self, face, table_pos, card_number):
+        super().__init__()
+        self.face = face
+        table_pos = self.table_positions[table_pos]
+        self.card_table_pos = (table_pos[0] + (card_number-1)*(Utils.WIDTH/24), table_pos[1])
+        
+    def draw(self):
+        game.window.blit(Utils.images["cards"][self.face], self.card_table_pos)
+        pass
+    
+class Hand(Card):
     def __init__(self):
         pass
         
-class Card():
-    def __init__(self):
-        pass   
+        
     
 class Button():
     def __init__(self, msg, posx, posy, width, height, standby_colour, hover_colour, action=None, dest=None):
@@ -149,7 +178,10 @@ class Button():
             pygame.draw.rect(game.window, self.hover_colour,(self.pos_x, self.pos_y, self.width, self.height))
 
             if click[0] == 1 and self.action != None:
-                self.action(self.dest)     
+                if self.dest == quit and game.gamestate == 0:
+                    self.action()    
+                elif self.dest != None:
+                    self.action(self.dest)
         else:
             pygame.draw.rect(game.window, self.standby_colour, (self.pos_x, self.pos_y, self.width, self.height))
 
@@ -160,34 +192,98 @@ class Button():
 # A static class of utilities that are used all through to code in various applications
 class Utils():
     
-    WIDTH, HEIGHT = 0, 0
-    
-    def setup_utils():
-        global WIDTH, HEIGHT
-        infoObject = pygame.display.Info()
-        WIDTH = infoObject.current_w // (3/2)
-        HEIGHT = infoObject.current_h // (3/2)
+    # Need to figure out how to use the info-object parameters in here for width and height instead of hardcoding
+    WIDTH, HEIGHT = 1200, 750
+    CWIDTH, CHEIGHT = WIDTH/(12/2), HEIGHT/3
         
-    
     DIRPATH = os.path.dirname(os.path.realpath(__file__))
     ASSET_FOLDER = os.path.join(DIRPATH, 'assets/')
+    CARD_FOLDER = os.path.join(ASSET_FOLDER, 'cards/')
 
     WINDOW_SCALED_FONT = None
-    
-    BG_IMAGE = pygame.image.load(os.path.join(ASSET_FOLDER, 'cybercity.png'))
-    BG_IMAGE_SCALED = pygame.transform.scale(BG_IMAGE, (960, 600))
     
     FPS = 60
     
     # Image loader - in progress
-    def image_loader(path): 
-        pygame.transform.scale(
+   
+    def load_image(path, fpath, width, height): 
+        return pygame.transform.scale(
             pygame.image.load(
                 os.path.join(
-                    Utils.ASSET_FOLDER, path
+                    fpath, path
                 )
-            ), (Utils.WIDTH, Utils.HEIGHT)
+            ), (width, height)
         )
+        
+    def load_card_image():
+        pass
+    
+    
+    images = {
+        "backgrounds": {
+            "menu": load_image('cybercity.png', ASSET_FOLDER, WIDTH, HEIGHT),
+            "game": load_image('rick.png', ASSET_FOLDER, WIDTH, HEIGHT)
+        },
+        # I know this sucks - will be improving it later
+        "cards": {
+            "A-H": load_image('a_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "A-D": load_image('a_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "A-S": load_image('a_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "A-C": load_image('a_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "K-H": load_image('k_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "K-D": load_image('k_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "K-S": load_image('k_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "K-C": load_image('k_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "Q-H": load_image('q_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "Q-D": load_image('q_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "Q-S": load_image('q_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "Q-C": load_image('q_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "J-H": load_image('j_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "J-D": load_image('j_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "J-S": load_image('j_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "J-C": load_image('j_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "T-H": load_image('t_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "T-D": load_image('t_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "T-S": load_image('t_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "T-C": load_image('t_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "9-H": load_image('9_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "9-D": load_image('9_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "9-S": load_image('9_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "9-C": load_image('9_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "8-H": load_image('8_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "8-D": load_image('8_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "8-S": load_image('8_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "8-C": load_image('8_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "7-H": load_image('7_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "7-D": load_image('7_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "7-S": load_image('7_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "7-C": load_image('7_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "6-H": load_image('6_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "6-D": load_image('6_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "6-S": load_image('6_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "6-C": load_image('6_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "5-H": load_image('5_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "5-D": load_image('5_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "5-S": load_image('5_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "5-C": load_image('5_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "4-H": load_image('4_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "4-D": load_image('4_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "4-S": load_image('4_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "4-C": load_image('4_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "3-H": load_image('3_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "3-D": load_image('3_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "3-S": load_image('3_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "3-C": load_image('3_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "2-H": load_image('2_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "2-D": load_image('2_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "2-S": load_image('2_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "2-C": load_image('2_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+        }
+        
+    }
+    
+    
+    
         
 
     # font loader
