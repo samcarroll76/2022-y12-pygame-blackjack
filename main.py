@@ -2,6 +2,7 @@ import pygame
 import random
 import os
 import sys
+import time
 
 
 
@@ -93,6 +94,12 @@ class Game():
             self.gamestate = 0
         if dest == 'blackjack':
             self.gamestate = 1
+            
+    # def t(self, msg): # TIMING FUNCTION
+    #     global last
+    #     new = time.time()
+    #     print("Last:", "{:.3f}".format(new - last), ", Start:", "{:.3f}".format(new - START), " - ", msg)
+    #     last = new
     
     # def quit(self):
     #     pygame.quit()
@@ -113,44 +120,94 @@ class Menu():
     
 class Blackjack():
     def __init__(self):
-        self.test_cards = [Card("A-H", "1", 1), Card("K-S", "1", 2)]
+        self.player_num = 3
+        self.suits = ['H','D','S','C']
+        self.faces = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
+        self.deck_num = 3
+        self.shuffle_factor = 5
+        self.shoe = []
+        self.make_shoe()
+        self.hands = []
+        self.make_hands()
+    
+    def make_hands(self):
+        player_pos = 0
+        for _ in range(self.player_num):
+            player_pos += 1
+            self.hands.append(Hand(f"{player_pos}", [self.get_card(),self.get_card()]))
+        pass
+        
+    def make_shoe(self):
+        for _ in range(self.deck_num):
+            for suit in self.suits:
+                for face in self.faces:
+                    self.shoe.append(Card(face, suit))
+        self.shuffle_shoe()
+    
+    def shuffle_shoe(self):
+        for _ in range(self.shuffle_factor * 100000):
+            
+            index_1 = random.randint(0,len(self.shoe)-1)
+            index_2 = random.randint(0,len(self.shoe)-1)
+            
+            tmp_card = self.shoe[index_1]
+            self.shoe[index_1] = self.shoe[index_2]
+            self.shoe[index_2] = tmp_card
+    
+    def get_card(self):
+        return self.shoe.pop(0)
         
     def draw(self):
         game.window.blit(Utils.images["backgrounds"]["game"], (0,0))
-        for card in self.test_cards:
-            card.draw()
+        for hand in self.hands:
+            hand.draw()
+            
+    
         
         
 class Table():
     def __init__(self):
-        self.table_positions = {
-            "1": (Utils.WIDTH/6, Utils.HEIGHT-(Utils.HEIGHT/3)),
-            "2": (Utils.WIDTH/2, Utils.HEIGHT-(Utils.HEIGHT/3)),
-            "3": (Utils.WIDTH/(6/5), Utils.HEIGHT-(Utils.HEIGHT/3))
-        }
+        
+        pass
 
-class Player(Table):
+class Player():
     def __init__(self, table_pos):
         pass
     
-    def hit():
-        pass
-        
-   
-class Card(Table):
-    def __init__(self, face, table_pos, card_number):
-        super().__init__()
-        self.face = face
-        table_pos = self.table_positions[table_pos]
-        self.card_table_pos = (table_pos[0] + (card_number-1)*(Utils.WIDTH/24), table_pos[1])
-        
-    def draw(self):
-        game.window.blit(Utils.images["cards"][self.face], self.card_table_pos)
+class Dealer(Player):
+    def __init__(self, table_pos):
+        super().__init__(table_pos)
         pass
     
-class Hand(Card):
-    def __init__(self):
+   
+class Card():
+    def __init__(self, face, suit):
+        self.face = face
+        self.suit = suit
+        self.card_id = f"{self.face}-{self.suit}"
+        
+        
+    def draw(self, position, card_num):
+        offset = (card_num-1)*(Utils.WIDTH/32)
+        game.window.blit(Utils.images["cards"][self.card_id], (position[0] + offset, position[1]))
         pass
+    
+class Hand():
+    def __init__(self, pos, start_cards):
+        self.table_positions = {
+            "1": (Utils.WIDTH/(64/5), Utils.HEIGHT-(Utils.HEIGHT/(18/7))),
+            "2": (Utils.WIDTH/(64/25), Utils.HEIGHT-(Utils.HEIGHT/(18/7))),
+            "3": (Utils.WIDTH/(64/45), Utils.HEIGHT-(Utils.HEIGHT/(18/7)))
+        }
+        self.start_cards = start_cards
+        self.table_pos = self.table_positions[pos]
+        # self.hand_table_pos = (self.table_pos[0] + (card_number-1)*(Utils.WIDTH/24), self.table_pos[1])
+        
+    def draw(self):
+        card_num = 0
+        for card in self.start_cards:
+            card_num += 1
+            card.draw(self.table_pos, card_num)
         
         
     
