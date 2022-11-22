@@ -13,6 +13,7 @@ class Game():
     
     def setup_pygame(self):
         pygame.init()
+        pygame.mixer.init()
         self.infoObject = pygame.display.Info()
         self.window_size = (self.infoObject.current_w // (12/10),
                             self.infoObject.current_h // (12/10))
@@ -56,6 +57,20 @@ class Game():
                 self.window_size = event.size
                 pygame.display.update()
             elif event.type == pygame.KEYDOWN:
+                # self.draw()
+                if event.key == pygame.K_r:
+                    self.restart()
+                if event.key == pygame.K_a:
+                    self.rick_roll()
+                if self.gamestate == 1:
+                    if event.key == pygame.K_h:
+                        self.blackjack.players[0].hit()
+                    if event.key == pygame.K_j:
+                        self.blackjack.players[1].hit()
+                    if event.key == pygame.K_k:
+                        self.blackjack.players[2].hit()
+                if self.gamestate == 0:
+                    pass
                 pass
     
     def draw(self):
@@ -70,7 +85,7 @@ class Game():
     def main_loop(self):
 
         self.render_surface = pygame.Surface((900,900), pygame.SRCALPHA, 32).convert_alpha()
-
+        
         while self.running:
 
             self.update()
@@ -94,6 +109,11 @@ class Game():
             self.gamestate = 0
         if dest == 'blackjack':
             self.gamestate = 1
+    
+    def rick_roll(self):
+        pygame.mixer.music.load(os.path.join(Utils.SOUNDS_FOLDER, 'rick.mp3'))
+        pygame.mixer.music.play(1)
+
             
     # def t(self, msg): # TIMING FUNCTION
     #     global last
@@ -120,25 +140,28 @@ class Menu():
     
 class Blackjack():
     def __init__(self):
-        self.player_num = 3
+        self.player_count = 3
         self.suits = ['H','D','S','C']
         self.faces = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
-        self.deck_num = 3
+        self.deck_count = 3
         self.shuffle_factor = 5
         self.shoe = []
+        self.players = []
+        
         self.make_shoe()
-        self.hands = []
-        self.make_hands()
-    
-    def make_hands(self):
+        self.make_players()
+        
+        
+    def make_players(self):
+        player_id = 0
         player_pos = 0
-        for _ in range(self.player_num):
+        for _ in range(self.player_count):
+            player_id += 1
             player_pos += 1
-            self.hands.append(Hand(f"{player_pos}", [self.get_card(),self.get_card()]))
-        pass
+            self.players.append(Player(player_id, player_pos, [self.get_card(),self.get_card()]))
         
     def make_shoe(self):
-        for _ in range(self.deck_num):
+        for _ in range(self.deck_count):
             for suit in self.suits:
                 for face in self.faces:
                     self.shoe.append(Card(face, suit))
@@ -159,26 +182,102 @@ class Blackjack():
         
     def draw(self):
         game.window.blit(Utils.images["backgrounds"]["game"], (0,0))
-        for hand in self.hands:
-            hand.draw()
+        for player in self.players:
+            player.draw()
             
-    
+
+# class Table():
+#     def __init__(self):
         
-        
-class Table():
-    def __init__(self):
-        
-        pass
+#         pass
 
 class Player():
-    def __init__(self, table_pos):
-        pass
+    def __init__(self, player_id, player_pos, start_cards):
+        self.player_id = player_id
+        self.player_pos = player_pos
+        self.start_cards = start_cards
+        self.hands = []
+        
+        self.add_hand()
+        
     
-class Dealer(Player):
-    def __init__(self, table_pos):
-        super().__init__(table_pos)
-        pass
+    def add_hand(self):
+        self.hands.append(Hand(f"{self.player_pos}", self.start_cards))
+        
+    def hit(self):
+        self.hands[0].add_card()
+        
+    def draw(self):
+        for hand in self.hands:
+            hand.draw()
+          
+# class Dealer(Player):
+#     def __init__(self, table_pos):
+#         super().__init__(table_pos)
+#         pass
     
+class Hand():
+    def __init__(self, pos, start_cards):
+        self.start_cards = start_cards
+        self.pos = pos
+        self.table_coords = Utils.table_positions[self.pos]
+        self.cards = []
+        
+        self.add_start_cards()
+        self.calculate_value()
+        # self.hand_table_pos = (self.table_pos[0] + (card_number-1)*(Utils.WIDTH/24), self.table_pos[1])
+    
+    def add_start_cards(self):
+        for card in self.start_cards:
+            self.cards.append(card)
+        # print(self.cards)
+        
+    def add_card(self):
+        self.cards.append(game.blackjack.get_card())
+        self.calculate_value()
+        
+    def calculate_value(self):
+        value = 0 
+        ace_count = 0
+        
+        for card in self.cards:
+            cinfo = card.info()
+            if cinfo[0] in Utils.ten_cards:
+                value += 10
+            elif cinfo[0] == "A":
+                value += 11
+                ace_count += 1
+            else:
+                value += int(cinfo[0])
+        
+        while value > 21 and ace_count > 0:
+            value -= 10
+            ace_count -= 1
+                
+        return value
+           
+            
+        
+        # for card in self.cards:
+        #     print(f"Pos: {self.pos}, {card}")
+        # print()
+        pass
+
+    def show_value(self):
+        val = Text(f"Value: {self.calculate_value()}", (Utils.table_positions[self.pos][0], Utils.table_positions[self.pos][1] - Utils.VALUE_OFFSET), Utils.CLR_WHITE)
+        val.draw()
+        
+        
+    def draw(self):
+        card_count = 0
+        for card in self.cards:
+            card_count += 1
+            card.draw(self.table_coords, card_count)
+        self.show_value()
+        
+        
+        
+        
    
 class Card():
     def __init__(self, face, suit):
@@ -186,30 +285,37 @@ class Card():
         self.suit = suit
         self.card_id = f"{self.face}-{self.suit}"
         
-        
-    def draw(self, position, card_num):
-        offset = (card_num-1)*(Utils.WIDTH/32)
-        game.window.blit(Utils.images["cards"][self.card_id], (position[0] + offset, position[1]))
+    def draw(self, position, card_count):
+        offset = (card_count-1)*(Utils.WIDTH/32)
+        game.window.blit(
+            Utils.load_image(f"{self.card_id}.png", Utils.CARD_FOLDER, Utils.CWIDTH, Utils.CHEIGHT),
+            (position[0] + offset, position[1])
+            )
         pass
     
-class Hand():
-    def __init__(self, pos, start_cards):
-        self.table_positions = {
-            "1": (Utils.WIDTH/(64/5), Utils.HEIGHT-(Utils.HEIGHT/(18/7))),
-            "2": (Utils.WIDTH/(64/25), Utils.HEIGHT-(Utils.HEIGHT/(18/7))),
-            "3": (Utils.WIDTH/(64/45), Utils.HEIGHT-(Utils.HEIGHT/(18/7)))
-        }
-        self.start_cards = start_cards
-        self.table_pos = self.table_positions[pos]
-        # self.hand_table_pos = (self.table_pos[0] + (card_number-1)*(Utils.WIDTH/24), self.table_pos[1])
+    def info(self):
+        return (self.face, self.suit, self.card_id)
         
+    def __repr__(self):
+        return f"{self.face}, {self.suit}, {self.card_id}"
+    
+
+class Text():
+    def __init__(self, msg, pos, colour):
+        self.msg = msg
+        self.pos = pos
+        self.colour = colour
+        
+        self.make_text()
+        
+    def make_text(self):
+        self.text_object = Utils.WINDOW_SCALED_FONT.render(self.msg, False, self.colour) 
+    
     def draw(self):
-        card_num = 0
-        for card in self.start_cards:
-            card_num += 1
-            card.draw(self.table_pos, card_num)
         
-        
+        game.window.blit(self.text_object, self.pos)
+    
+
     
 class Button():
     def __init__(self, msg, posx, posy, width, height, standby_colour, hover_colour, action=None, dest=None):
@@ -252,11 +358,20 @@ class Utils():
     # Need to figure out how to use the info-object parameters in here for width and height instead of hardcoding
     WIDTH, HEIGHT = 1200, 750
     CWIDTH, CHEIGHT = WIDTH/(12/2), HEIGHT/3
+    
+    VALUE_OFFSET = HEIGHT/37.5
         
     DIRPATH = os.path.dirname(os.path.realpath(__file__))
     ASSET_FOLDER = os.path.join(DIRPATH, 'assets/')
     CARD_FOLDER = os.path.join(ASSET_FOLDER, 'cards/')
+    BG_FOLDER = os.path.join(ASSET_FOLDER, 'backgrounds/')
+    SOUNDS_FOLDER = os.path.join(ASSET_FOLDER, 'sounds/')
 
+
+    fonts = [["default", 20],
+             ["default", 40],
+        ]
+    
     WINDOW_SCALED_FONT = None
     
     FPS = 60
@@ -275,78 +390,30 @@ class Utils():
     def load_card_image():
         pass
     
+    ten_cards = ["T", "J", "Q", "K"]
+    
     
     images = {
         "backgrounds": {
-            "menu": load_image('cybercity.png', ASSET_FOLDER, WIDTH, HEIGHT),
-            "game": load_image('rick.png', ASSET_FOLDER, WIDTH, HEIGHT)
-        },
-        # I know this sucks - will be improving it later
-        "cards": {
-            "A-H": load_image('a_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "A-D": load_image('a_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "A-S": load_image('a_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "A-C": load_image('a_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "K-H": load_image('k_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "K-D": load_image('k_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "K-S": load_image('k_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "K-C": load_image('k_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "Q-H": load_image('q_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "Q-D": load_image('q_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "Q-S": load_image('q_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "Q-C": load_image('q_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "J-H": load_image('j_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "J-D": load_image('j_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "J-S": load_image('j_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "J-C": load_image('j_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "T-H": load_image('t_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "T-D": load_image('t_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "T-S": load_image('t_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "T-C": load_image('t_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "9-H": load_image('9_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "9-D": load_image('9_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "9-S": load_image('9_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "9-C": load_image('9_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "8-H": load_image('8_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "8-D": load_image('8_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "8-S": load_image('8_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "8-C": load_image('8_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "7-H": load_image('7_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "7-D": load_image('7_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "7-S": load_image('7_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "7-C": load_image('7_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "6-H": load_image('6_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "6-D": load_image('6_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "6-S": load_image('6_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "6-C": load_image('6_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "5-H": load_image('5_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "5-D": load_image('5_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "5-S": load_image('5_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "5-C": load_image('5_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "4-H": load_image('4_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "4-D": load_image('4_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "4-S": load_image('4_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "4-C": load_image('4_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "3-H": load_image('3_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "3-D": load_image('3_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "3-S": load_image('3_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "3-C": load_image('3_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "2-H": load_image('2_of_hearts.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "2-D": load_image('2_of_diamonds.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "2-S": load_image('2_of_spades.png', CARD_FOLDER, CWIDTH, CHEIGHT),
-            "2-C": load_image('2_of_clubs.png', CARD_FOLDER, CWIDTH, CHEIGHT),
+            "menu": load_image('cybercity.png', BG_FOLDER, WIDTH, HEIGHT),
+            "game": load_image('rick.png', BG_FOLDER, WIDTH, HEIGHT)
         }
-        
     }
     
     
+    table_positions = {
+            "1": (WIDTH/(64/5), HEIGHT-(HEIGHT/(18/7))),
+            "2": (WIDTH/(64/25), HEIGHT-(HEIGHT/(18/7))),
+            "3": (WIDTH/(64/45), HEIGHT-(HEIGHT/(18/7)))
+        }
     
+
         
 
-    # font loader
+    # # font loader
     def load_fonts():
-        Utils.WINDOW_SCALED_FONT = pygame.font.Font(
-            pygame.font.get_default_font(), 20)
+        Utils.WINDOW_SCALED_FONT = pygame.font.Font(pygame.font.get_default_font(), 20)
+        
 
     # colour constants
     CLR_RED = (255, 0, 0)
