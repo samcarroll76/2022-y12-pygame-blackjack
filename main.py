@@ -36,7 +36,7 @@ class Game():
     def start(self):
         
         self.menu = Menu()
-        self.blackjack = Blackjack()
+        self.blackjack = Blackjack(17, 16)
         self.global_button_size = (Utils.WIDTH/24, Utils.HEIGHT/15)
         self.global_buttons = [Button("Quit", Utils.WIDTH/48, Utils.HEIGHT/30, self.global_button_size[0], 
                                       self.global_button_size[1], Utils.CLR_DARK_GREY, Utils.CLR_RED, quit, 'quit'), 
@@ -62,17 +62,15 @@ class Game():
                     self.restart()
                 if event.key == pygame.K_a:
                     self.rick_roll()
-                if self.gamestate == 1:
-                    if event.key == pygame.K_h:
-                        self.blackjack.players[1].hit()
-                    if event.key == pygame.K_c:
-                        for player in self.blackjack.players:
-                            if isinstance(player, Bot):
-                                player.decide_move()
-                        
                 if self.gamestate == 0:
                     pass
+            elif event.type == pygame.MOUSEBUTTONUP:
+                self.mouse_up = True
                 pass
+        
+        if self.gamestate == 1:
+            self.progress_turns()                        
+
     
     def draw(self):
         if self.gamestate == 0:
@@ -82,12 +80,13 @@ class Game():
         for button in self.global_buttons:
             button.draw()
 
-
     def main_loop(self):
 
         self.render_surface = pygame.Surface((900,900), pygame.SRCALPHA, 32).convert_alpha()
         
         while self.running:
+            
+            self.mouse_up = False
 
             self.update()
             self.draw()
@@ -99,6 +98,7 @@ class Game():
             self.should_restart = False
             self.running = True
             self.start()
+        
 
     # Determines if the game should restart based on its current state
     def restart(self):
@@ -111,10 +111,38 @@ class Game():
             self.blackjack.initial_draw = True
         if dest == 'blackjack':
             self.gamestate = 1
+            load_text = Text("Shuffling Decks...", (Utils.WIDTH/2, Utils.HEIGHT/2), Utils.CLR_BLACK)
+            load_text.draw()
+            self.restart()
+            # pygame.time.wait(1000)
     
     def rick_roll(self):
         pygame.mixer.music.load(os.path.join(Utils.SOUNDS_FOLDER, 'rick.mp3'))
         pygame.mixer.music.play(1)
+
+    def progress_turns(self):
+        print("in progress_turns")
+        p = self.blackjack.current_player
+        if p.is_human():
+            # listen for keys to advance game
+            # buttons do this themselves
+            pass
+        else:
+            pygame.time.wait(1000)
+            # call decide move
+            p.decide_move()
+            pass
+              
+        self.blackjack.check_finish()
+                
+        # if event.key == pygame.K_h and not isinstance(self.blackjack.current_player, Bot):
+        #     self.blackjack.current_player.hit()
+        # # if <hitKeyPressed> and not isinstance(currentPlayer, Computer);
+        # #     currentPlayer.hit()
+        # if event.key == pygame.K_c:
+        #     for player in self.blackjack.players:
+        #         if isinstance(player, Bot):
+        #             player.decide_move()
 
             
     # def t(self, msg): # TIMING FUNCTION
@@ -131,7 +159,7 @@ class Menu():
     def __init__(self):
         self.menu_button_size = (Utils.WIDTH/6, Utils.HEIGHT/12)
         self.button_offset = (self.menu_button_size[0]//2)
-        self.button_open_blackjack = Button("Blackjack", Utils.WIDTH/2-self.button_offset, Utils.HEIGHT/(12/4), self.menu_button_size[0], 
+        self.button_open_blackjack = Button("Blackjack", Utils.WIDTH/2, Utils.HEIGHT/(12/4), self.menu_button_size[0], 
                                             self.menu_button_size[1], Utils.CLR_BLUE, Utils.CLR_RED, game.change_state, 'blackjack')
         
     
@@ -141,27 +169,32 @@ class Menu():
     
     
 class Blackjack():
-    def __init__(self):
-        self.player_count = 3
+    def __init__(self, dealer_threshold, bot_threshold):
+        self.player_count = 4
         self.suits = ['H','D','S','C']
         self.faces = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
         self.deck_count = 3
         self.shuffle_factor = 5
+        self.dealer_threshold = dealer_threshold
+        self.bot_threshold = bot_threshold
         self.shoe = []
         self.players = []
         
         self.make_shoe()
         self.make_players()
         
-        self.interaction_buttons = [Button("Hit", Utils.WIDTH/(5/3), Utils.HEIGHT/2, Utils.INTERACTION_BUTTON_SIZE[0], 
-                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_GREEN, Utils.CLR_RED, self.players[1].hit, None), 
-                                    Button("Stand", Utils.WIDTH/(5/2), Utils.HEIGHT/2, Utils.INTERACTION_BUTTON_SIZE[0], 
-                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_RED, Utils.CLR_RED, self.players[1].stand, None), 
-                                    Button("Double", Utils.WIDTH/(5/4), Utils.HEIGHT/2, Utils.INTERACTION_BUTTON_SIZE[0], 
-                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_GREEN, Utils.CLR_RED, self.players[1].hit, None), 
-                                    Button("Split", Utils.WIDTH/(5/1), Utils.HEIGHT/2, Utils.INTERACTION_BUTTON_SIZE[0], 
-                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_RED, Utils.CLR_RED, None, None) ]
+        self.interaction_buttons = [Button("Hit", Utils.WIDTH/(32/17), Utils.HEIGHT/(18/11), Utils.INTERACTION_BUTTON_SIZE[0], 
+                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_GREEN, Utils.CLR_GREY, self.players[1].hit, None), 
+                                    Button("Stand", Utils.WIDTH/(32/15), Utils.HEIGHT/(18/11), Utils.INTERACTION_BUTTON_SIZE[0], 
+                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_RED, Utils.CLR_GREY, self.players[1].stand, None), 
+                                    # Button("Double", Utils.WIDTH/(32/19), Utils.HEIGHT/(18/11), Utils.INTERACTION_BUTTON_SIZE[0], 
+                                    #   Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_GREEN, Utils.CLR_GREY, self.players[1].hit, None), 
+                                    # Button("Split", Utils.WIDTH/(32/13), Utils.HEIGHT/(18/11), Utils.INTERACTION_BUTTON_SIZE[0], 
+                                    #   Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_RED, Utils.CLR_GREY, None, None)
+        ]
         self.initial_draw = True
+        self.current_player_index = 0
+        self.current_player = self.players[self.current_player_index]
         
         
     def make_players(self):
@@ -170,10 +203,12 @@ class Blackjack():
         for _ in range(self.player_count):
             player_id += 1
             player_pos += 1
-            if player_id != 2:
-                self.players.append(Bot(player_id, player_pos, [self.get_card(),self.get_card()]))
-            else:
+            if player_id == 2:
                 self.players.append(Player(player_id, player_pos, [self.get_card(),self.get_card()]))
+            elif player_id == 4:
+                self.players.append(Dealer(player_id, player_pos, [self.get_card(),self.get_card()], self.dealer_threshold))
+            else:
+                self.players.append(Bot(player_id, player_pos, [self.get_card(),self.get_card()], self.bot_threshold))
         
     def make_shoe(self):
         for _ in range(self.deck_count):
@@ -194,6 +229,41 @@ class Blackjack():
     
     def get_card(self):
         return self.shoe.pop(0)
+    
+    def check_finish(self):
+        if self.current_player.finished:
+            if self.current_player_index >= 3:
+                self.check_winners()
+                pass
+            else:   
+                self.current_player_index += 1
+                self.current_player = self.players[self.current_player_index]
+    
+    def check_winners(self):
+        deal_val = self.players[3].hands[0].calculate_value()
+        
+        for player in self.players:
+            if player.player_id < 4:
+                print(player.player_id)
+                val = player.hands[0].calculate_value()
+                if val > 21:
+                    player.show_outcome("lose")
+                elif len(player.hands[0].cards) >= 5:
+                    player.show_outcome("win")
+                elif deal_val > 21:
+                    player.show_outcome("win")
+                elif val > deal_val:
+                    player.show_outcome("win")
+                elif val < deal_val:
+                    player.show_outcome("lose")
+                elif val == deal_val:
+                    player.show_outcome("tie")
+        pygame.time.wait(300)
+        redeal_text = Text("Re-dealing Cards...", (Utils.WIDTH/2, Utils.HEIGHT/2), Utils.CLR_BLACK)
+        redeal_text.draw()
+        game.restart()
+          
+                
         
     def draw(self):
         if self.initial_draw:
@@ -217,6 +287,8 @@ class Player():
         self.start_cards = start_cards
         self.hands = []
         self.finished = False
+        self.stand_threshold = 17
+        self._is_human = True
         
         self.add_hand()
         
@@ -226,9 +298,19 @@ class Player():
         self.draw()
         
     def hit(self):
-        self.hands[0].add_card()
-        self.draw()
-        self.check_bust()
+        if self.hands[0].calculate_value() < 21:
+            self.hands[0].add_card()
+            self.draw()
+            self.check_bust()
+        else:
+            self.finished = True
+            
+    def decide_move(self):
+        assert not self.is_human()  # throw a fit if we call this on a player     
+        if self.hands[0].calculate_value() < self.stand_threshold and len(self.hands[0].cards) < 5:
+            self.hit() 
+        else:
+            self.stand()
         
     def stand(self):
         self.finished = True
@@ -237,22 +319,43 @@ class Player():
     # just for shits and giggles
     def check_bust(self):
         if self.hands[0].calculate_value() > 21:
+            # self.finished = True
             game.rick_roll()
+    
+    def show_outcome(self, outcome):
+        
+        if self.player_id == 2:
+            out_text = Text(f"You {outcome}!!", 
+                            (Utils.table_positions[str(self.player_id)][0], 
+                            Utils.table_positions[str(self.player_id)][1] - Utils.HEIGHT/(18/2)),
+                            Utils.CLR_BLACK)
+        else:
+            out_text = Text(f"Player {self.player_id} {outcome}s!!",
+                            (Utils.table_positions[str(self.player_id)][0], 
+                            Utils.table_positions[str(self.player_id)][1] - Utils.HEIGHT/(18/2)),
+                            Utils.CLR_BLACK)
+        
+        out_text.draw()
         
     def draw(self):
         for hand in self.hands:
-            hand.draw()
+            hand.draw(self.finished)
+            
+    def is_human(self):
+        return self._is_human
     
 class Bot(Player):
-    def __init__(self, player_id, player_pos, start_cards):
+    def __init__(self, player_id, player_pos, start_cards, stand_threshold):
         super().__init__(player_id, player_pos, start_cards)
+        self.stand_threshold = stand_threshold
+        self._is_human = False
         
-    def decide_move(self):
-        if self.hands[0].calculate_value() < 17:
-            self.hit() 
-        else:
-            self.stand()
-            
+class Dealer(Player):
+    def __init__(self, player_id, player_pos, start_cards, stand_threshold):
+        super().__init__(player_id, player_pos, start_cards)
+        self.stand_threshold = stand_threshold
+        self._is_human = False
+                
 class Hand():
     def __init__(self, pos, start_cards):
         self.start_cards = start_cards
@@ -261,7 +364,6 @@ class Hand():
         self.cards = []
         
         self.add_start_cards()
-        self.calculate_value()
         # self.hand_table_pos = (self.table_pos[0] + (card_number-1)*(Utils.WIDTH/24), self.table_pos[1])
     
     def add_start_cards(self):
@@ -271,7 +373,6 @@ class Hand():
         
     def add_card(self):
         self.cards.append(game.blackjack.get_card())
-        self.calculate_value()
         
     def calculate_value(self):
         value = 0 
@@ -292,29 +393,23 @@ class Hand():
             ace_count -= 1
                 
         return value
-           
-            
-        
-        # for card in self.cards:
-        #     print(f"Pos: {self.pos}, {card}")
-        # print()
-        pass
 
-    def show_value(self):
+    def show_value(self, active):
+        colour = Utils.CLR_GREEN if active else Utils.CLR_BLACK
         val = Button(f"{self.calculate_value()}", 
                      Utils.table_positions[self.pos][0] + 2*Utils.CARD_SPACING, Utils.table_positions[self.pos][1] - Utils.VALUE_BUTTON_SIZE[1] - Utils.VALUE_OFFSET, 
                      Utils.VALUE_BUTTON_SIZE[0], Utils.VALUE_BUTTON_SIZE[1], 
-                     Utils.CLR_BLACK, Utils.CLR_BLACK, None, None)
+                     colour, colour, None, None)
         # val = Text(f"Value: {self.calculate_value()}", (Utils.table_positions[self.pos][0], Utils.table_positions[self.pos][1] - Utils.VALUE_OFFSET), Utils.CLR_WHITE)
         val.draw()
         
         
-    def draw(self):
+    def draw(self, active):
         card_count = 0
         for card in self.cards:
             card_count += 1
             card.draw(self.table_coords, card_count)
-        self.show_value()
+        self.show_value(active)
         
         
         
@@ -344,16 +439,17 @@ class Card():
 class Text():
     def __init__(self, msg, pos, colour):
         self.msg = msg
-        self.pos = pos
+        self.size = Utils.WINDOW_SCALED_FONT.size(self.msg)
+        
+        self.pos = (pos[0] - self.size[0]//2, pos[1] - self.size[1]//2)
         self.colour = colour
         
         self.make_text()
         
     def make_text(self):
-        self.text_object = Utils.WINDOW_SCALED_FONT.render(self.msg, False, self.colour) 
-    
-    def draw(self):
+        self.text_object = Utils.WINDOW_SCALED_FONT.render(self.msg, False, self.colour)
         
+    def draw(self):
         game.window.blit(self.text_object, self.pos)
     
 
@@ -369,7 +465,10 @@ class Button():
         self.hover_colour = hover_colour
         self.action = action
         self.dest = dest
-        
+    
+    def get_text_width(self):
+        text_dimensions = Utils.WINDOW_SCALED_FONT.size(f"{self.msg}")
+        return text_dimensions
     
     def text_objects(self, text, font):
         textSurface = font.render(text, True, Utils.CLR_WHITE)
@@ -378,19 +477,19 @@ class Button():
     def draw(self):
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
-        if self.pos_x + self.width > mouse[0] > self.pos_x and self.pos_y + self.height > mouse[1] > self.pos_y:
-            pygame.draw.rect(game.window, self.hover_colour,(self.pos_x, self.pos_y, self.width, self.height))
+        if self.pos_x + self.width//2 > mouse[0] > self.pos_x - self.width//2 and self.pos_y + self.height//2 > mouse[1] > self.pos_y - self.height//2:
+            pygame.draw.rect(game.window, self.hover_colour,(self.pos_x - self.width//2, self.pos_y - self.height//2, self.width, self.height))
 
-            if click[0] == 1 and self.action != None:   
+            if game.mouse_up and self.action != None:   
                 if self.dest != None:
                     self.action(self.dest)
                 else:
                     self.action()
         else:
-            pygame.draw.rect(game.window, self.standby_colour, (self.pos_x, self.pos_y, self.width, self.height))
+            pygame.draw.rect(game.window, self.standby_colour, (self.pos_x - self.width//2, self.pos_y - self.height//2, self.width, self.height))
 
         textSurf, textRect = self.text_objects(self.msg, Utils.WINDOW_SCALED_FONT)
-        textRect.center = ( (self.pos_x + (self.width/2)), (self.pos_y+(self.height/2)) )
+        textRect.center = ( (self.pos_x), (self.pos_y) )
         game.window.blit(textSurf, textRect)   
         
 # A static class of utilities that are used all through to code in various applications
@@ -400,7 +499,7 @@ class Utils():
     WIDTH, HEIGHT = 1200, 750
     CWIDTH, CHEIGHT = WIDTH/(18/2), HEIGHT/(9/2)
     
-    VALUE_OFFSET = HEIGHT/37.5
+    VALUE_OFFSET = HEIGHT/75
     
     CARD_SPACING = WIDTH/32
         
@@ -417,7 +516,7 @@ class Utils():
     
     WINDOW_SCALED_FONT = None
     
-    INTERACTION_BUTTON_SIZE = (WIDTH/12, HEIGHT/12)
+    INTERACTION_BUTTON_SIZE = (WIDTH/18, HEIGHT/18)
     
     VALUE_BUTTON_SIZE = (WIDTH/24, HEIGHT/24)
     
@@ -451,7 +550,8 @@ class Utils():
     table_positions = {
             "1": (WIDTH/(64/5), HEIGHT-(HEIGHT/(18/5))),
             "2": (WIDTH/(64/25), HEIGHT-(HEIGHT/(18/5))),
-            "3": (WIDTH/(64/45), HEIGHT-(HEIGHT/(18/5)))
+            "3": (WIDTH/(64/45), HEIGHT-(HEIGHT/(18/5))),
+            "4": (WIDTH/(64/25), (HEIGHT/(18/2)))
         }
     
 
@@ -490,9 +590,3 @@ class Utils():
 # game object declaration and initialisation
 game = Game()
 game.start()
-
-# for player in self.players:
-#     if isinstance(player, Computer):
-#         while player.finished != True:
-#             player.hit()
-#             pygame.wait(500)
