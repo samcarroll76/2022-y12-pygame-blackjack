@@ -1,0 +1,23 @@
+- ## Needs & Objectives
+	- Some of the needs and objectives that have been laid out in the task notification as well as drawn out by the existing rules of blackjack include:
+		- Player Needs:
+			- is able to interact/play
+			- is able to Hit or Stand based on hand value
+			- is able to win based on their hand value compared to the dealers
+		- Dealer needs:
+			- to shuffle the decks/shoe
+			- to take a card of the top of the deck.
+			- to follow standard dealer rules eg.(hits on 16, stands on 17)
+			- to have a customisable stand threshold
+		- Other needs:
+			- bots need to have a customisable stand threshold
+			- The game needs to be enjoyable to play and have some uniqueness to it.
+			- The game needs to be coded with an object oriented approach in order to make the game modular
+			- and thus easier to alter or add to in the future.
+			- the game must have a simple and user friendly UI that is easy to navigate
+- ## Boundaries
+	- Some of the boundaries that I have set for myself across the course of the project include:
+		- Not making the game multiplayer compatible. I made this boundary because I feel that this would have taken to much time to implement successfully.
+		- Only having 1 normal player that can be played and 2 bots that will play themselves. I made this decision Because I feel that adding extra bots doesn't help the player much as betting is not included
+		- Not including betting. I made this decision to ensure that i prioritise the functionality of the basic aspects of blackjack that make it fun first before moving on to other things.
+		- There will not be a dealing period or animation for the receiving of cards. I made this decision based on time requirements and the fact that although it may improve UX, it was not as important as some of the other requirements.

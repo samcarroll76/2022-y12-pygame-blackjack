@@ -1,0 +1,7 @@
+## Problem Defintion
+    - There are few problems that I will be attempting to solve  process of making and coding this game. They are:
+        - The fact that there are not many simple and enjoyable blackjack games to play in the language of python.
+        - The fact that I have been stuck in the procedural development approach to coding my games for all of my projects except for the term 3 project and need to get better and more familiar with the concepts and rules that go along with designing my programs using Object Oriented Programming
+    - The first problem is important to solve as black jack is a very fun an easy game to play and ensuring that there are simple games that give people enjoyment is very important. It is also important as the creation of these new games adds to the growing network of python games and examples frokm which less experienced coders can learn.
+    - The second problem is important to solve as the development approach that I was previously using (Procedural development) is only really suitable for very small scales and for less experienced programmers. Using this development approach can severely limit the size and nature of the project as when you have to change something about the project or add new features, you must implement this everywhere in the code. In the case of the OOP approach, It is able to be coded so that objects can call their own methods when certain conditions are tripped and as everything is modular, it makes adding new features and changing the program much less time intensive.
+    -
