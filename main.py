@@ -64,11 +64,12 @@ class Game():
                     self.rick_roll()
                 if self.gamestate == 1:
                     if event.key == pygame.K_h:
-                        self.blackjack.players[0].hit()
-                    if event.key == pygame.K_j:
                         self.blackjack.players[1].hit()
-                    if event.key == pygame.K_k:
-                        self.blackjack.players[2].hit()
+                    if event.key == pygame.K_c:
+                        for player in self.blackjack.players:
+                            if isinstance(player, Bot):
+                                player.decide_move()
+                        
                 if self.gamestate == 0:
                     pass
                 pass
@@ -107,6 +108,7 @@ class Game():
     def change_state(self, dest):
         if dest == 'menu':
             self.gamestate = 0
+            self.blackjack.initial_draw = True
         if dest == 'blackjack':
             self.gamestate = 1
     
@@ -151,6 +153,16 @@ class Blackjack():
         self.make_shoe()
         self.make_players()
         
+        self.interaction_buttons = [Button("Hit", Utils.WIDTH/(5/3), Utils.HEIGHT/2, Utils.INTERACTION_BUTTON_SIZE[0], 
+                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_GREEN, Utils.CLR_RED, self.players[1].hit, None), 
+                                    Button("Stand", Utils.WIDTH/(5/2), Utils.HEIGHT/2, Utils.INTERACTION_BUTTON_SIZE[0], 
+                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_RED, Utils.CLR_RED, self.players[1].stand, None), 
+                                    Button("Double", Utils.WIDTH/(5/4), Utils.HEIGHT/2, Utils.INTERACTION_BUTTON_SIZE[0], 
+                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_GREEN, Utils.CLR_RED, self.players[1].hit, None), 
+                                    Button("Split", Utils.WIDTH/(5/1), Utils.HEIGHT/2, Utils.INTERACTION_BUTTON_SIZE[0], 
+                                      Utils.INTERACTION_BUTTON_SIZE[1], Utils.CLR_RED, Utils.CLR_RED, None, None) ]
+        self.initial_draw = True
+        
         
     def make_players(self):
         player_id = 0
@@ -158,7 +170,10 @@ class Blackjack():
         for _ in range(self.player_count):
             player_id += 1
             player_pos += 1
-            self.players.append(Player(player_id, player_pos, [self.get_card(),self.get_card()]))
+            if player_id != 2:
+                self.players.append(Bot(player_id, player_pos, [self.get_card(),self.get_card()]))
+            else:
+                self.players.append(Player(player_id, player_pos, [self.get_card(),self.get_card()]))
         
     def make_shoe(self):
         for _ in range(self.deck_count):
@@ -181,9 +196,13 @@ class Blackjack():
         return self.shoe.pop(0)
         
     def draw(self):
-        game.window.blit(Utils.images["backgrounds"]["game"], (0,0))
-        for player in self.players:
-            player.draw()
+        if self.initial_draw:
+            game.window.blit(Utils.images["backgrounds"]["game"], (0,0))
+            for player in self.players:
+                player.draw()
+            self.initial_draw = False
+        for button in self.interaction_buttons:
+            button.draw()
             
 
 # class Table():
@@ -197,25 +216,43 @@ class Player():
         self.player_pos = player_pos
         self.start_cards = start_cards
         self.hands = []
+        self.finished = False
         
         self.add_hand()
         
     
     def add_hand(self):
         self.hands.append(Hand(f"{self.player_pos}", self.start_cards))
+        self.draw()
         
     def hit(self):
         self.hands[0].add_card()
+        self.draw()
+        self.check_bust()
+        
+    def stand(self):
+        self.finished = True
+        self.draw()
+    
+    # just for shits and giggles
+    def check_bust(self):
+        if self.hands[0].calculate_value() > 21:
+            game.rick_roll()
         
     def draw(self):
         for hand in self.hands:
             hand.draw()
-          
-# class Dealer(Player):
-#     def __init__(self, table_pos):
-#         super().__init__(table_pos)
-#         pass
     
+class Bot(Player):
+    def __init__(self, player_id, player_pos, start_cards):
+        super().__init__(player_id, player_pos, start_cards)
+        
+    def decide_move(self):
+        if self.hands[0].calculate_value() < 17:
+            self.hit() 
+        else:
+            self.stand()
+            
 class Hand():
     def __init__(self, pos, start_cards):
         self.start_cards = start_cards
@@ -264,7 +301,11 @@ class Hand():
         pass
 
     def show_value(self):
-        val = Text(f"Value: {self.calculate_value()}", (Utils.table_positions[self.pos][0], Utils.table_positions[self.pos][1] - Utils.VALUE_OFFSET), Utils.CLR_WHITE)
+        val = Button(f"{self.calculate_value()}", 
+                     Utils.table_positions[self.pos][0] + 2*Utils.CARD_SPACING, Utils.table_positions[self.pos][1] - Utils.VALUE_BUTTON_SIZE[1] - Utils.VALUE_OFFSET, 
+                     Utils.VALUE_BUTTON_SIZE[0], Utils.VALUE_BUTTON_SIZE[1], 
+                     Utils.CLR_BLACK, Utils.CLR_BLACK, None, None)
+        # val = Text(f"Value: {self.calculate_value()}", (Utils.table_positions[self.pos][0], Utils.table_positions[self.pos][1] - Utils.VALUE_OFFSET), Utils.CLR_WHITE)
         val.draw()
         
         
@@ -286,7 +327,7 @@ class Card():
         self.card_id = f"{self.face}-{self.suit}"
         
     def draw(self, position, card_count):
-        offset = (card_count-1)*(Utils.WIDTH/32)
+        offset = (card_count-1)*(Utils.CARD_SPACING)
         game.window.blit(
             Utils.load_image(f"{self.card_id}.png", Utils.CARD_FOLDER, Utils.CWIDTH, Utils.CHEIGHT),
             (position[0] + offset, position[1])
@@ -340,11 +381,11 @@ class Button():
         if self.pos_x + self.width > mouse[0] > self.pos_x and self.pos_y + self.height > mouse[1] > self.pos_y:
             pygame.draw.rect(game.window, self.hover_colour,(self.pos_x, self.pos_y, self.width, self.height))
 
-            if click[0] == 1 and self.action != None:
-                if self.dest == quit and game.gamestate == 0:
-                    self.action()    
-                elif self.dest != None:
+            if click[0] == 1 and self.action != None:   
+                if self.dest != None:
                     self.action(self.dest)
+                else:
+                    self.action()
         else:
             pygame.draw.rect(game.window, self.standby_colour, (self.pos_x, self.pos_y, self.width, self.height))
 
@@ -357,9 +398,11 @@ class Utils():
     
     # Need to figure out how to use the info-object parameters in here for width and height instead of hardcoding
     WIDTH, HEIGHT = 1200, 750
-    CWIDTH, CHEIGHT = WIDTH/(12/2), HEIGHT/3
+    CWIDTH, CHEIGHT = WIDTH/(18/2), HEIGHT/(9/2)
     
     VALUE_OFFSET = HEIGHT/37.5
+    
+    CARD_SPACING = WIDTH/32
         
     DIRPATH = os.path.dirname(os.path.realpath(__file__))
     ASSET_FOLDER = os.path.join(DIRPATH, 'assets/')
@@ -373,6 +416,10 @@ class Utils():
         ]
     
     WINDOW_SCALED_FONT = None
+    
+    INTERACTION_BUTTON_SIZE = (WIDTH/12, HEIGHT/12)
+    
+    VALUE_BUTTON_SIZE = (WIDTH/24, HEIGHT/24)
     
     FPS = 60
     
@@ -402,9 +449,9 @@ class Utils():
     
     
     table_positions = {
-            "1": (WIDTH/(64/5), HEIGHT-(HEIGHT/(18/7))),
-            "2": (WIDTH/(64/25), HEIGHT-(HEIGHT/(18/7))),
-            "3": (WIDTH/(64/45), HEIGHT-(HEIGHT/(18/7)))
+            "1": (WIDTH/(64/5), HEIGHT-(HEIGHT/(18/5))),
+            "2": (WIDTH/(64/25), HEIGHT-(HEIGHT/(18/5))),
+            "3": (WIDTH/(64/45), HEIGHT-(HEIGHT/(18/5)))
         }
     
 
@@ -443,3 +490,9 @@ class Utils():
 # game object declaration and initialisation
 game = Game()
 game.start()
+
+# for player in self.players:
+#     if isinstance(player, Computer):
+#         while player.finished != True:
+#             player.hit()
+#             pygame.wait(500)
